@@ -5,6 +5,7 @@ import { findAndMoveToTree, beginChopping, finishChopping, startChoppingCycle } 
 import { startGatheringCycle, beginHarvestingLogs, finishHarvestingLogs, beginHarvestingBushes, finishHarvestingBushes, harvestNextBush } from './gathering.js';
 import { updateFollow } from './following.js';
 import { TILE_TYPE } from '../map-tile-types.js';
+import { findPath } from '../pathfinding.js';
 
 function treeHasBeenChopped(player, gameMap, allPlayers) {
     console.log(`[${player.username}] Joined in chopping a tree that was just cut. Proceeding to gather.`);
