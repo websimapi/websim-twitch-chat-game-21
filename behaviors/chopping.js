@@ -72,44 +72,87 @@ export function startChoppingCycle(player, gameMap) {
     findAndMoveToTree(player, gameMap);
 }
 
-export function beginChopping(player, gameMap) {
-    const treeObject = gameMap.grid[player.actionTarget.y][player.actionTarget.x];
+export function beginChopping(player, gameMap, game) {
     // Final check to ensure the tree is still there before starting to chop.
-    if (!player.actionTarget || treeObject.type !== TILE_TYPE.TREE) {
+    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.TREE) {
         console.log(`[${player.username}] Attempted to chop a tree that is already gone. Finding a new one.`);
         startChoppingCycle(player, gameMap);
         return;
     }
 
-    player.state = PLAYER_STATE.CHOPPING;
     const CHOP_DURATION_MS = 11000;
+    const targetId = `${player.actionTarget.x},${player.actionTarget.y}`;
+    const now = Date.now();
+    let remainingTimeMs;
+    let totalTimeMs;
 
-    if (treeObject.chopStartedAt === null) {
-        // This is the first player to chop this tree
-        treeObject.chopStartedAt = Date.now();
-        treeObject.chopDuration = CHOP_DURATION_MS;
-        player.actionTimer = CHOP_DURATION_MS / 1000;
-        player.actionTotalTime = CHOP_DURATION_MS / 1000;
-        console.log(`[${player.username}] Started chopping a new tree at (${player.actionTarget.x}, ${player.actionTarget.y}).`);
+    if (!game.activeChoppingTargets.has(targetId)) {
+        game.activeChoppingTargets.set(targetId, { 
+            startTime: now, 
+            totalTime: CHOP_DURATION_MS 
+        });
+        remainingTimeMs = CHOP_DURATION_MS;
+        totalTimeMs = CHOP_DURATION_MS;
     } else {
-        // Another player is already chopping, join in
-        const timeElapsed = Date.now() - treeObject.chopStartedAt;
-        const timeRemaining = Math.max(0, treeObject.chopDuration - timeElapsed);
+        const chopData = game.activeChoppingTargets.get(targetId);
+        remainingTimeMs = (chopData.startTime + chopData.totalTime) - now;
+        totalTimeMs = chopData.totalTime;
+    }
 
-        player.actionTimer = timeRemaining / 1000;
-        player.actionTotalTime = treeObject.chopDuration / 1000;
-        console.log(`[${player.username}] Joined chopping tree at (${player.actionTarget.x}, ${player.actionTarget.y}) with ${player.actionTimer.toFixed(2)}s remaining.`);
+    player.state = PLAYER_STATE.CHOPPING;
+    player.actionTimer = Math.max(0, remainingTimeMs / 1000); // in seconds
+    player.actionTotalTime = totalTimeMs / 1000;
+    console.log(`[${player.username}] Began chopping tree at (${player.actionTarget.x}, ${player.actionTarget.y}) with ${player.actionTimer.toFixed(1)}s remaining.`);
+}
+
+function treeHasBeenChopped(player, gameMap, allPlayers) {
+    console.log(`[${player.username}] Joined in chopping a tree that was just cut. Proceeding to gather.`);
+    
+    // The player who finished the chop is responsible for spawning resources.
+    // We just need to find them and copy the pendingHarvest list.
+    const treeX = player.actionTarget.x;
+    const treeY = player.actionTarget.y;
+
+    let leadChopper = null;
+    for (const p of allPlayers.values()) {
+        // Find the player who just cut this tree, they will have the pendingHarvest list.
+        if (p.pendingHarvest.some(item => item.sourceTreeX === treeX && item.sourceTreeY === treeY)) {
+            leadChopper = p;
+            break;
+        }
+    }
+    
+    if (leadChopper) {
+        player.pendingHarvest = [...leadChopper.pendingHarvest]; // Copy the harvest list
+    } else {
+        // Fallback: if we can't find the lead chopper (e.g., they disconnected),
+        // we won't have bushes, but we can still try to get the logs.
+        player.pendingHarvest = [];
+    }
+
+    // Move to logs first. The position is the original tree position.
+    player.actionTarget = { x: treeX, y: treeY }; 
+    player.state = PLAYER_STATE.IDLE;
+    const startX = Math.round(player.pixelX);
+    const startY = Math.round(player.pixelY);
+    const path = findPath(startX, startY, treeX, treeY, gameMap);
+
+    if(path) {
+        player.path = path;
+        player.state = PLAYER_STATE.MOVING_TO_LOGS;
+    } else {
+        console.warn(`[${player.username}] No path found to logs from cooperative chop. Trying bushes.`);
+        harvestNextBush(player, gameMap);
     }
 }
 
-export function finishChopping(player, gameMap) {
-    // This check is important because another player might have finished chopping the same tree
-    // in the same frame this player's timer ran out. The first one to process will cut it.
-    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.TREE) {
-        console.log(`[${player.username}] Finished chopping, but the tree was already gone. Moving on to gather.`);
-        // Even if the tree is gone, we should still try to gather the resulting logs/bushes.
-        // We set the actionTarget to where the tree *was* to look for logs.
-        harvestNextBush(player, gameMap);
+export function finishChopping(player, gameMap, game, allPlayers) {
+    const targetId = `${player.actionTarget.x},${player.actionTarget.y}`;
+    game.activeChoppingTargets.delete(targetId);
+
+    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.TREE) {
+        console.log(`[${player.username}] Finished chopping, but the tree was already gone. Finding another.`);
+        startChoppingCycle(player, gameMap);
         return;
     }
 
@@ -132,9 +175,9 @@ export function finishChopping(player, gameMap) {
         const bushX = treeX + dx;
         const bushY = treeY + dy;
         if (bushX >= 0 && bushX < gameMap.width && bushY >= 0 && bushY < gameMap.height && 
-            gameMap.grid[bushY][bushX].type === TILE_TYPE.GRASS && Math.random() < 1/8) {
-            gameMap.grid[bushY][bushX] = { type: TILE_TYPE.BUSHES };
-            player.pendingHarvest.push({ x: bushX, y: bushY, type: TILE_TYPE.BUSHES });
+            gameMap.grid[bushY][bushX] === TILE_TYPE.GRASS && Math.random() < 1/8) {
+            gameMap.grid[bushY][bushX] = TILE_TYPE.BUSHES;
+            player.pendingHarvest.push({ x: bushX, y: bushY, type: TILE_TYPE.BUSHES, sourceTreeX: treeX, sourceTreeY: treeY });
             spawnedBushes++;
         }
     }
@@ -142,14 +185,14 @@ export function finishChopping(player, gameMap) {
         const validSpots = directions.filter(([dx, dy]) => {
             const bushX = treeX + dx;
             const bushY = treeY + dy;
-            return bushX >= 0 && bushX < gameMap.width && bushY >= 0 && bushY < gameMap.height && gameMap.grid[bushY][bushX].type === TILE_TYPE.GRASS;
+            return bushX >= 0 && bushX < gameMap.width && bushY >= 0 && bushY < gameMap.height && gameMap.grid[bushY][bushX] === TILE_TYPE.GRASS;
         });
         if (validSpots.length > 0) {
             const [dx, dy] = validSpots[Math.floor(Math.random() * validSpots.length)];
             const bushX = treeX + dx;
             const bushY = treeY + dy;
-            gameMap.grid[bushY][bushX] = { type: TILE_TYPE.BUSHES };
-            player.pendingHarvest.push({ x: bushX, y: bushY, type: TILE_TYPE.BUSHES });
+            gameMap.grid[bushY][bushX] = TILE_TYPE.BUSHES;
+            player.pendingHarvest.push({ x: bushX, y: bushY, type: TILE_TYPE.BUSHES, sourceTreeX: treeX, sourceTreeY: treeY });
         }
     }
 

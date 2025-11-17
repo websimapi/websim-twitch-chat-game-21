@@ -58,7 +58,7 @@ export function startGatheringCycle(player, gameMap) {
 }
 
 export function beginHarvestingLogs(player, gameMap) {
-    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.LOGS) {
+    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.LOGS) {
         console.log(`[${player.username}] Attempted to harvest logs that are already gone. Moving on.`);
         harvestNextBush(player, gameMap);
         return;
@@ -70,7 +70,7 @@ export function beginHarvestingLogs(player, gameMap) {
 }
 
 export function finishHarvestingLogs(player, gameMap) {
-    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.LOGS) {
+    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.LOGS) {
         console.log(`[${player.username}] Finished harvesting, but logs were already gone. Moving on.`);
         harvestNextBush(player, gameMap);
         return;
@@ -82,7 +82,7 @@ export function finishHarvestingLogs(player, gameMap) {
     console.log(`[${player.username}] Harvested ${numLogs} logs. Total: ${player.inventory.logs.length}. Timestamp: ${Date.now()}`);
     player.addExperience('woodcutting', numLogs);
     player.addExperience('gathering', 2);
-    gameMap.grid[player.actionTarget.y][player.actionTarget.x] = { type: TILE_TYPE.GRASS };
+    gameMap.grid[player.actionTarget.y][player.actionTarget.x] = TILE_TYPE.GRASS;
 
     // After harvesting logs, always check for bushes before deciding the next major action.
     harvestNextBush(player, gameMap);
@@ -117,7 +117,7 @@ export function harvestNextBush(player, gameMap) {
 }
 
 export function beginHarvestingBushes(player, gameMap) {
-    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.BUSHES) {
+    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.BUSHES) {
         console.log(`[${player.username}] Attempted to harvest a bush that is already gone. Moving on.`);
         harvestNextBush(player, gameMap);
         return;
@@ -130,7 +130,7 @@ export function beginHarvestingBushes(player, gameMap) {
 }
 
 export function finishHarvestingBushes(player, gameMap) {
-    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.BUSHES) {
+    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.BUSHES) {
         console.log(`[${player.username}] Finished harvesting, but the bush was already gone. Moving on.`);
         harvestNextBush(player, gameMap);
         return;
@@ -140,7 +140,7 @@ export function finishHarvestingBushes(player, gameMap) {
     const totalLeaves = player.inventory.leaves.reduce((sum, item) => sum + item.amount, 0);
     console.log(`[${player.username}] Harvested ${numLeaves} leaves. Total: ${totalLeaves}. Timestamp: ${Date.now()}`);
     player.addExperience('gathering', 1);
-    gameMap.grid[player.actionTarget.y][player.actionTarget.x] = { type: TILE_TYPE.GRASS };
+    gameMap.grid[player.actionTarget.y][player.actionTarget.x] = TILE_TYPE.GRASS;
 
     if (player.activeCommand === 'gather') {
         startGatheringCycle(player, gameMap);

@@ -21,6 +21,7 @@ export class Game {
         this.players = new Map();
         this.map = new GameMap(32); // TileSize is 32
         this.camera = new Camera(this.canvas, this.map, this.players);
+        this.activeChoppingTargets = new Map();
 
         Persistence.loadMap(this.map, this.mapStorageKey);
         Persistence.loadPlayers(this.players, this.playersStorageKey);
@@ -191,7 +192,7 @@ export class Game {
         this.map.update(this.players);
 
         for (const player of this.players.values()) {
-            player.update(deltaTime, this.map, this.players);
+            player.update(deltaTime, this.map, this.players, this);
         }
     }
     

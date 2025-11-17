@@ -219,7 +219,7 @@ export class Player {
             const target = this.actionTarget;
             const isTargetInvalid = !target || 
                                     !gameMap.grid[target.y] || 
-                                    gameMap.grid[target.y][target.x].type !== requiredTileType;
+                                    gameMap.grid[target.y][target.x] !== requiredTileType;
 
             if (isTargetInvalid) {
                 console.warn(`[${this.username}] Invalid target for state ${this.state}. Target tile at (${target?.x}, ${target?.y}) is missing or incorrect. Resetting to IDLE.`);
@@ -252,7 +252,7 @@ export class Player {
         }
     }
 
-    update(deltaTime, gameMap, allPlayers) {
+    update(deltaTime, gameMap, allPlayers, game) {
         
         if (this.isPowered()) {
             // 1. Energy Draining Logic
@@ -311,7 +311,7 @@ export class Player {
             }
 
             // State Machine for actions
-            updateAction(this, deltaTime, gameMap, allPlayers);
+            updateAction(this, deltaTime, gameMap, allPlayers, game);
 
         }
     }

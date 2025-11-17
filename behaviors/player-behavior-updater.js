@@ -6,7 +6,48 @@ import { startGatheringCycle, beginHarvestingLogs, finishHarvestingLogs, beginHa
 import { updateFollow } from './following.js';
 import { TILE_TYPE } from '../map-tile-types.js';
 
-export function updateAction(player, deltaTime, gameMap, allPlayers) {
+function treeHasBeenChopped(player, gameMap, allPlayers) {
+    console.log(`[${player.username}] Joined in chopping a tree that was just cut. Proceeding to gather.`);
+    
+    // The player who finished the chop is responsible for spawning resources.
+    // We just need to find them and copy the pendingHarvest list.
+    const treeX = player.actionTarget.x;
+    const treeY = player.actionTarget.y;
+
+    let leadChopper = null;
+    for (const p of allPlayers.values()) {
+        // Find the player who just cut this tree, they will have the pendingHarvest list.
+        if (p.pendingHarvest.some(item => item.sourceTreeX === treeX && item.sourceTreeY === treeY)) {
+            leadChopper = p;
+            break;
+        }
+    }
+    
+    if (leadChopper) {
+        player.pendingHarvest = [...leadChopper.pendingHarvest]; // Copy the harvest list
+    } else {
+        // Fallback: if we can't find the lead chopper (e.g., they disconnected),
+        // we won't have bushes, but we can still try to get the logs.
+        player.pendingHarvest = [];
+    }
+
+    // Move to logs first. The position is the original tree position.
+    player.actionTarget = { x: treeX, y: treeY }; 
+    player.state = PLAYER_STATE.IDLE;
+    const startX = Math.round(player.pixelX);
+    const startY = Math.round(player.pixelY);
+    const path = findPath(startX, startY, treeX, treeY, gameMap);
+
+    if(path) {
+        player.path = path;
+        player.state = PLAYER_STATE.MOVING_TO_LOGS;
+    } else {
+        console.warn(`[${player.username}] No path found to logs from cooperative chop. Trying bushes.`);
+        harvestNextBush(player, gameMap);
+    }
+}
+
+export function updateAction(player, deltaTime, gameMap, allPlayers, game) {
     const atMoveTarget = player.path.length === 0;
 
     switch (player.state) {
@@ -26,7 +67,7 @@ export function updateAction(player, deltaTime, gameMap, allPlayers) {
             break;
 
         case PLAYER_STATE.MOVING_TO_TREE:
-            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.TREE) {
+            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.TREE) {
                 console.log(`[${player.username}] Target tree at (${player.actionTarget?.x}, ${player.actionTarget?.y}) is gone. Finding a new one.`);
                 startChoppingCycle(player, gameMap);
                 return;
@@ -46,12 +87,12 @@ export function updateAction(player, deltaTime, gameMap, allPlayers) {
                 if (distToFinalAdjust > 0.05) {
                     updateMoveToTarget(player, deltaTime, gameMap);
                 } else {
-                     beginChopping(player, gameMap);
+                     beginChopping(player, gameMap, game);
                 }
             }
             break;
         case PLAYER_STATE.MOVING_TO_LOGS:
-            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.LOGS) {
+            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.LOGS) {
                 console.log(`[${player.username}] Target logs at (${player.actionTarget?.x}, ${player.actionTarget?.y}) are gone. Moving on.`);
                 harvestNextBush(player, gameMap); // This function handles what to do next
                 return;
@@ -62,7 +103,7 @@ export function updateAction(player, deltaTime, gameMap, allPlayers) {
             }
             break;
         case PLAYER_STATE.MOVING_TO_BUSHES:
-            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.BUSHES) {
+            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.BUSHES) {
                 console.log(`[${player.username}] Target bush at (${player.actionTarget?.x}, ${player.actionTarget?.y}) is gone. Moving on.`);
                 harvestNextBush(player, gameMap); // This function handles what to do next
                 return;
@@ -89,17 +130,14 @@ export function updateAction(player, deltaTime, gameMap, allPlayers) {
              break;
 
         case PLAYER_STATE.CHOPPING:
-            // Check if another player finished chopping the tree
-            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.TREE) {
-                console.log(`[${player.username}] Tree at (${player.actionTarget?.x}, ${player.actionTarget?.y}) was chopped by someone else. Finishing up.`);
-                // The tree is gone, so we call finishChopping to transition to gathering
-                finishChopping(player, gameMap);
+            if (player.actionTarget && gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.TREE) {
+                // The tree is gone! Someone else must have finished it.
+                treeHasBeenChopped(player, gameMap, allPlayers);
                 return; // Stop further processing for this frame
             }
-
             player.actionTimer -= deltaTime;
             if (player.actionTimer <= 0) {
-                finishChopping(player, gameMap);
+                finishChopping(player, gameMap, game, allPlayers);
             } else if (Math.floor(player.actionTimer) % 2 === 0 && Math.floor(player.actionTimer + deltaTime) % 2 !== 0) {
                  const chopSound = AudioManager.getBuffer('./chop.mp3');
                  AudioManager.play(chopSound, player.pixelX, player.pixelY);
