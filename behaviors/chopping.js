@@ -73,23 +73,43 @@ export function startChoppingCycle(player, gameMap) {
 }
 
 export function beginChopping(player, gameMap) {
+    const treeObject = gameMap.grid[player.actionTarget.y][player.actionTarget.x];
     // Final check to ensure the tree is still there before starting to chop.
-    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.TREE) {
+    if (!player.actionTarget || treeObject.type !== TILE_TYPE.TREE) {
         console.log(`[${player.username}] Attempted to chop a tree that is already gone. Finding a new one.`);
         startChoppingCycle(player, gameMap);
         return;
     }
 
     player.state = PLAYER_STATE.CHOPPING;
-    player.actionTimer = 11; // 11 seconds to chop
-    player.actionTotalTime = 11;
-    console.log(`[${player.username}] Began chopping tree at (${player.actionTarget.x}, ${player.actionTarget.y}). Timestamp: ${Date.now()}`);
+    const CHOP_DURATION_MS = 11000;
+
+    if (treeObject.chopStartedAt === null) {
+        // This is the first player to chop this tree
+        treeObject.chopStartedAt = Date.now();
+        treeObject.chopDuration = CHOP_DURATION_MS;
+        player.actionTimer = CHOP_DURATION_MS / 1000;
+        player.actionTotalTime = CHOP_DURATION_MS / 1000;
+        console.log(`[${player.username}] Started chopping a new tree at (${player.actionTarget.x}, ${player.actionTarget.y}).`);
+    } else {
+        // Another player is already chopping, join in
+        const timeElapsed = Date.now() - treeObject.chopStartedAt;
+        const timeRemaining = Math.max(0, treeObject.chopDuration - timeElapsed);
+
+        player.actionTimer = timeRemaining / 1000;
+        player.actionTotalTime = treeObject.chopDuration / 1000;
+        console.log(`[${player.username}] Joined chopping tree at (${player.actionTarget.x}, ${player.actionTarget.y}) with ${player.actionTimer.toFixed(2)}s remaining.`);
+    }
 }
 
 export function finishChopping(player, gameMap) {
-    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.TREE) {
-        console.log(`[${player.username}] Finished chopping, but the tree was already gone. Finding another.`);
-        startChoppingCycle(player, gameMap);
+    // This check is important because another player might have finished chopping the same tree
+    // in the same frame this player's timer ran out. The first one to process will cut it.
+    if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.TREE) {
+        console.log(`[${player.username}] Finished chopping, but the tree was already gone. Moving on to gather.`);
+        // Even if the tree is gone, we should still try to gather the resulting logs/bushes.
+        // We set the actionTarget to where the tree *was* to look for logs.
+        harvestNextBush(player, gameMap);
         return;
     }
 
@@ -112,8 +132,8 @@ export function finishChopping(player, gameMap) {
         const bushX = treeX + dx;
         const bushY = treeY + dy;
         if (bushX >= 0 && bushX < gameMap.width && bushY >= 0 && bushY < gameMap.height && 
-            gameMap.grid[bushY][bushX] === TILE_TYPE.GRASS && Math.random() < 1/8) {
-            gameMap.grid[bushY][bushX] = TILE_TYPE.BUSHES;
+            gameMap.grid[bushY][bushX].type === TILE_TYPE.GRASS && Math.random() < 1/8) {
+            gameMap.grid[bushY][bushX] = { type: TILE_TYPE.BUSHES };
             player.pendingHarvest.push({ x: bushX, y: bushY, type: TILE_TYPE.BUSHES });
             spawnedBushes++;
         }
@@ -122,13 +142,13 @@ export function finishChopping(player, gameMap) {
         const validSpots = directions.filter(([dx, dy]) => {
             const bushX = treeX + dx;
             const bushY = treeY + dy;
-            return bushX >= 0 && bushX < gameMap.width && bushY >= 0 && bushY < gameMap.height && gameMap.grid[bushY][bushX] === TILE_TYPE.GRASS;
+            return bushX >= 0 && bushX < gameMap.width && bushY >= 0 && bushY < gameMap.height && gameMap.grid[bushY][bushX].type === TILE_TYPE.GRASS;
         });
         if (validSpots.length > 0) {
             const [dx, dy] = validSpots[Math.floor(Math.random() * validSpots.length)];
             const bushX = treeX + dx;
             const bushY = treeY + dy;
-            gameMap.grid[bushY][bushX] = TILE_TYPE.BUSHES;
+            gameMap.grid[bushY][bushX] = { type: TILE_TYPE.BUSHES };
             player.pendingHarvest.push({ x: bushX, y: bushY, type: TILE_TYPE.BUSHES });
         }
     }

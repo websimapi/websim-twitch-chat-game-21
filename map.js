@@ -50,13 +50,17 @@ export class Map {
             this.grid[j] = [];
             for (let i = 0; i < this.width; i++) {
                 // 1/16 chance to spawn a tree (1)
-                this.grid[j][i] = (Math.random() < TREE_CHANCE) ? TILE_TYPE.TREE : TILE_TYPE.GRASS;
+                if (Math.random() < TREE_CHANCE) {
+                    this.grid[j][i] = { type: TILE_TYPE.TREE, chopStartedAt: null, chopDuration: null };
+                } else {
+                    this.grid[j][i] = { type: TILE_TYPE.GRASS };
+                }
             }
         }
     }
 
     cutTree(x, y) {
-        this.grid[y][x] = TILE_TYPE.LOGS;
+        this.grid[y][x] = { type: TILE_TYPE.LOGS };
         this.scheduleTreeRespawn(x, y);
     }
 
@@ -95,11 +99,11 @@ export class Map {
                         continue;
                     }
 
-                    const isOccupiedByTree = this.grid[newY][newX] === TILE_TYPE.TREE;
+                    const isOccupiedByTree = this.grid[newY][newX].type === TILE_TYPE.TREE;
                     const isOccupiedByPlayer = Array.from(players.values()).some(p => Math.round(p.pixelX) === newX && Math.round(p.pixelY) === newY);
 
                     if (!isOccupiedByTree && !isOccupiedByPlayer) {
-                        this.grid[newY][newX] = TILE_TYPE.TREE;
+                        this.grid[newY][newX] = { type: TILE_TYPE.TREE, chopStartedAt: null, chopDuration: null };
                         console.log(`Tree respawned at (${newX}, ${newY}) from original location (${respawn.originalX}, ${respawn.originalY})`);
                         spawned = true;
                         break;
@@ -120,7 +124,7 @@ export class Map {
         }
         
         // 1 means Tree/Obstacle
-        return this.grid[gridY][gridX] === TILE_TYPE.TREE;
+        return this.grid[gridY][gridX].type === TILE_TYPE.TREE;
     }
 
     findAll(tileTypes) {
@@ -128,7 +132,7 @@ export class Map {
         const locations = [];
         for (let j = 0; j < this.height; j++) {
             for (let i = 0; i < this.width; i++) {
-                const tileType = this.grid[j][i];
+                const tileType = this.grid[j][i].type;
                 if (tileTypes.includes(tileType)) {
                     locations.push({ x: i, y: j, type: tileType });
                 }
@@ -143,7 +147,7 @@ export class Map {
 
         for (let j = 0; j < this.height; j++) {
             for (let i = 0; i < this.width; i++) {
-                if (this.grid[j][i] === tileType) {
+                if (this.grid[j][i].type === tileType) {
                     const dx = i - x;
                     const dy = j - y;
                     const distance = dx * dx + dy * dy; // Use squared distance for efficiency
@@ -168,7 +172,7 @@ export class Map {
 
         for (let j = startY; j <= endY; j++) {
             for (let i = startX; i <= endX; i++) {
-                const tileType = this.grid[j][i];
+                const tileType = this.grid[j][i].type;
                 if (tileTypes.includes(tileType)) {
                     const dx = i - x;
                     const dy = j - y;
@@ -188,7 +192,7 @@ export class Map {
         for (let j = drawStartY; j < drawEndY; j++) {
             for (let i = drawStartX; i < drawEndX; i++) {
                 if (j < 0 || j >= this.height || i < 0 || i >= this.width) continue;
-                const tileType = this.grid[j] ? this.grid[j][i] : TILE_TYPE.GRASS;
+                const tileType = this.grid[j] ? this.grid[j][i].type : TILE_TYPE.GRASS;
                 if (tileType === TILE_TYPE.TREE) {
                     tallObjects.push({
                         type: 'tree',
@@ -220,7 +224,7 @@ export class Map {
                 ctx.drawImage(this.grassTile, i * ts, j * ts, ts, ts);
 
                 // Draw ground objects
-                const tileType = this.grid[j] ? this.grid[j][i] : TILE_TYPE.GRASS;
+                const tileType = this.grid[j] ? this.grid[j][i].type : TILE_TYPE.GRASS;
                 let objectImage = null;
 
                 switch (tileType) {
@@ -297,7 +301,7 @@ export class Map {
                 );
                 
                 // Check and draw obstacle/object
-                const tileType = this.grid[j] ? this.grid[j][i] : TILE_TYPE.GRASS;
+                const tileType = this.grid[j] ? this.grid[j][i].type : TILE_TYPE.GRASS;
                 let objectImage = null;
 
                 switch(tileType) {

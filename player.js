@@ -219,7 +219,7 @@ export class Player {
             const target = this.actionTarget;
             const isTargetInvalid = !target || 
                                     !gameMap.grid[target.y] || 
-                                    gameMap.grid[target.y][target.x] !== requiredTileType;
+                                    gameMap.grid[target.y][target.x].type !== requiredTileType;
 
             if (isTargetInvalid) {
                 console.warn(`[${this.username}] Invalid target for state ${this.state}. Target tile at (${target?.x}, ${target?.y}) is missing or incorrect. Resetting to IDLE.`);

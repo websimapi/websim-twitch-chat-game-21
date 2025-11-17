@@ -26,7 +26,7 @@ export function updateAction(player, deltaTime, gameMap, allPlayers) {
             break;
 
         case PLAYER_STATE.MOVING_TO_TREE:
-            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.TREE) {
+            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.TREE) {
                 console.log(`[${player.username}] Target tree at (${player.actionTarget?.x}, ${player.actionTarget?.y}) is gone. Finding a new one.`);
                 startChoppingCycle(player, gameMap);
                 return;
@@ -51,7 +51,7 @@ export function updateAction(player, deltaTime, gameMap, allPlayers) {
             }
             break;
         case PLAYER_STATE.MOVING_TO_LOGS:
-            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.LOGS) {
+            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.LOGS) {
                 console.log(`[${player.username}] Target logs at (${player.actionTarget?.x}, ${player.actionTarget?.y}) are gone. Moving on.`);
                 harvestNextBush(player, gameMap); // This function handles what to do next
                 return;
@@ -62,7 +62,7 @@ export function updateAction(player, deltaTime, gameMap, allPlayers) {
             }
             break;
         case PLAYER_STATE.MOVING_TO_BUSHES:
-            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.BUSHES) {
+            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.BUSHES) {
                 console.log(`[${player.username}] Target bush at (${player.actionTarget?.x}, ${player.actionTarget?.y}) is gone. Moving on.`);
                 harvestNextBush(player, gameMap); // This function handles what to do next
                 return;
@@ -89,6 +89,14 @@ export function updateAction(player, deltaTime, gameMap, allPlayers) {
              break;
 
         case PLAYER_STATE.CHOPPING:
+            // Check if another player finished chopping the tree
+            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x].type !== TILE_TYPE.TREE) {
+                console.log(`[${player.username}] Tree at (${player.actionTarget?.x}, ${player.actionTarget?.y}) was chopped by someone else. Finishing up.`);
+                // The tree is gone, so we call finishChopping to transition to gathering
+                finishChopping(player, gameMap);
+                return; // Stop further processing for this frame
+            }
+
             player.actionTimer -= deltaTime;
             if (player.actionTimer <= 0) {
                 finishChopping(player, gameMap);
