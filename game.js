@@ -27,6 +27,11 @@ export class Game {
         Persistence.loadMap(this.map, this.mapStorageKey);
         Persistence.loadPlayers(this.players, this.playersStorageKey);
 
+        // Validate player states after loading everything
+        for (const player of this.players.values()) {
+            player.validateState(this.map);
+        }
+
         this.resize();
         window.addEventListener('resize', () => this.resize());
         window.addEventListener('keydown', (e) => this.handleKeyPress(e));
