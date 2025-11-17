@@ -7,6 +7,7 @@ import { PLAYER_STATE } from './player-state.js';
 import { Camera } from './game/camera.js';
 import * as Persistence from './game/persistence.js';
 import { finishChopping } from './behaviors/chopping.js';
+import { beginChopping, beginHarvestingBushes, beginHarvestingLogs } from './behaviors/index.js';
 
 export class Game {
     constructor(canvas, channel, worldName = 'default') {
@@ -29,7 +30,7 @@ export class Game {
 
         // Validate player states after loading everything
         for (const player of this.players.values()) {
-            player.validateState(this.map);
+            player.validateState(this.map, this);
         }
 
         this.resize();

@@ -5,6 +5,7 @@ import { startGatheringCycle } from './behaviors/gathering.js';
 import { renderPlayer } from './player-renderer.js';
 import { TILE_TYPE } from './map-tile-types.js';
 import { findPath } from './pathfinding.js';
+import { beginChopping, beginHarvestingBushes, beginHarvestingLogs } from './behaviors/index.js';
 
 export const ENERGY_DURATION_MS = 3600 * 1000; // 1 hour (3600 seconds)
 
@@ -127,6 +128,8 @@ export class Player {
             inventory: this.inventory,
             state: this.state,
             actionTarget: this.actionTarget, // Save the action target
+            actionTimer: this.actionTimer,
+            actionTotalTime: this.actionTotalTime,
             pendingHarvest: this.pendingHarvest,
             activeCommand: this.activeCommand,
             followTargetId: this.followTargetId,
@@ -189,6 +192,8 @@ export class Player {
 
         this.actionTarget = state.actionTarget || null; // Restore the action target
         this.state = state.state || PLAYER_STATE.IDLE;
+        this.actionTimer = state.actionTimer || 0;
+        this.actionTotalTime = state.actionTotalTime || 0;
         
         // If restoring a chopping state, ensure the action target is valid.
         if (this.state === PLAYER_STATE.CHOPPING && !this.actionTarget) {
@@ -203,7 +208,7 @@ export class Player {
     }
 
     // New method to validate state after map is loaded
-    validateState(gameMap) {
+    validateState(gameMap, game) {
         // Validate player position first
         const currentGridX = Math.round(this.pixelX);
         const currentGridY = Math.round(this.pixelY);
@@ -238,6 +243,7 @@ export class Player {
         if (requiredTileType !== undefined) {
             const target = this.actionTarget;
             const isTargetInvalid = !target || 
+                                    target.y === undefined || target.x === undefined || // Check for valid object
                                     !gameMap.grid[target.y] || 
                                     gameMap.grid[target.y][target.x] !== requiredTileType;
 
@@ -247,14 +253,19 @@ export class Player {
                 this.actionTarget = null;
                 this.path = []; // Clear the path as well
             } else {
-                // Target is valid, re-initialize movement if needed
-                if (this.state === PLAYER_STATE.MOVING_TO_TREE) {
-                    console.log(`[${this.username}] Re-initializing move target for state ${this.state}.`);
-                    // The setChopTarget function was complex and mostly duplicated findPath logic.
-                    // The path is already loaded, so we trust it or let it be recalculated by the behavior.
-                    // For now, we let the existing path be used by updateAction.
-                    // If issues arise, we can explicitly re-call findAndMoveToTree.
-                } else if (this.state === PLAYER_STATE.MOVING_TO_LOGS || this.state === PLAYER_STATE.MOVING_TO_BUSHES) {
+                if (this.state === PLAYER_STATE.CHOPPING) {
+                    console.log(`[${this.username}] Re-initializing chopping state on load.`);
+                    beginChopping(this, gameMap, game);
+                } else if (this.state === PLAYER_STATE.HARVESTING_LOGS) {
+                    console.log(`[${this.username}] Re-initializing harvesting logs state on load.`);
+                    beginHarvestingLogs(this, gameMap);
+                } else if (this.state === PLAYER_STATE.HARVESTING_BUSHES) {
+                    console.log(`[${this.username}] Re-initializing harvesting bushes state on load.`);
+                    beginHarvestingBushes(this, gameMap);
+                }
+
+                // Re-calculate paths for movement states
+                if (this.state.startsWith('moving_to')) {
                     console.log(`[${this.username}] Re-calculating path for state ${this.state}.`);
                     const startX = Math.round(this.pixelX);
                     const startY = Math.round(this.pixelY);

@@ -2,7 +2,7 @@ import { PLAYER_STATE } from '../player-state.js';
 import { TILE_TYPE } from '../map-tile-types.js';
 import { AudioManager } from '../audio-manager.js';
 import { findPath } from '../pathfinding.js';
-import { beginHarvestingBushes, beginHarvestingLogs, harvestNextBush } from './gathering.js';
+import { harvestNextBush } from './gathering.js';
 
 export function findAndMoveToTree(player, gameMap) {
     const allTrees = gameMap.findAll([TILE_TYPE.TREE]);

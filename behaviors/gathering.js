@@ -1,7 +1,7 @@
 import { PLAYER_STATE } from '../player-state.js';
 import { TILE_TYPE } from '../map-tile-types.js';
 import { findPath } from '../pathfinding.js';
-import { findAndMoveToTree, startChoppingCycle } from './chopping.js';
+import { startChoppingCycle } from './chopping.js';
 
 export function startGatheringCycle(player, gameMap) {
     player.state = PLAYER_STATE.SEARCHING_FOR_GATHERABLE;
