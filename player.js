@@ -27,6 +27,12 @@ export class Player {
         this.targetX = 0;
         this.targetY = 0;
         this.path = []; // Path for A* movement
+
+        // For collision avoidance
+        const angle = Math.random() * 2 * Math.PI;
+        const radius = Math.random() * 0.25; // Random radius up to 25% of a tile
+        this.offsetX = Math.cos(angle) * radius;
+        this.offsetY = Math.sin(angle) * radius;
         
         this.isPositioned = false; // Flag to track initialization
 
@@ -126,6 +132,8 @@ export class Player {
             followTargetId: this.followTargetId,
             lastSearchPosition: this.lastSearchPosition,
             skills: this.skills,
+            offsetX: this.offsetX,
+            offsetY: this.offsetY,
         };
     }
 
@@ -143,6 +151,18 @@ export class Player {
         }
         
         this.path = state.path || [];
+
+        // Load visual offset
+        if (state.offsetX !== undefined && state.offsetY !== undefined) {
+            this.offsetX = state.offsetX;
+            this.offsetY = state.offsetY;
+        } else {
+            // Generate for older save files
+            const angle = Math.random() * 2 * Math.PI;
+            const radius = Math.random() * 0.25;
+            this.offsetX = Math.cos(angle) * radius;
+            this.offsetY = Math.sin(angle) * radius;
+        }
 
         // Load energyTimestamps
         if (state.energyTimestamps && Array.isArray(state.energyTimestamps)) {

@@ -154,8 +154,8 @@ function drawEnergyBar(ctx, player, screenX, usernameTagY, usernameFontSize) {
 
 export function renderPlayer(ctx, player, tileSize, cameraX, cameraY) {
     const radius = tileSize / 2.5;
-    const screenX = (player.pixelX * tileSize + tileSize / 2) - cameraX;
-    const screenY = (player.pixelY * tileSize + tileSize / 2) - cameraY;
+    const screenX = ((player.pixelX + player.offsetX) * tileSize + tileSize / 2) - cameraX;
+    const screenY = ((player.pixelY + player.offsetY) * tileSize + tileSize / 2) - cameraY;
 
     ctx.save();	
 

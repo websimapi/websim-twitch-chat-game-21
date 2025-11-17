@@ -42,6 +42,9 @@ export function updateFollowPath(player, deltaTime, gameMap) {
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist < 0.05) {
+        // Snap to grid point before moving to next waypoint
+        player.pixelX = player.targetX;
+        player.pixelY = player.targetY;
         // Reached the waypoint, remove it from the path
         player.path.shift();
     }

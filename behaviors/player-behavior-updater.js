@@ -131,15 +131,14 @@ export function updateAction(player, deltaTime, gameMap, allPlayers, game) {
              break;
 
         case PLAYER_STATE.CHOPPING:
-            if (player.actionTarget && gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.TREE) {
+            if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.TREE) {
                 // The tree is gone! Someone else must have finished it.
                 treeHasBeenChopped(player, gameMap, allPlayers);
                 return; // Stop further processing for this frame
             }
-            player.actionTimer -= deltaTime;
-            if (player.actionTimer <= 0) {
-                finishChopping(player, gameMap, game, allPlayers);
-            } else if (Math.floor(player.actionTimer) % 2 === 0 && Math.floor(player.actionTimer + deltaTime) % 2 !== 0) {
+            // The main logic for timer countdown is now handled centrally in game.js
+            // This block now only handles the intermittent chopping sound effect.
+            if (Math.floor(player.actionTimer) % 2 === 0 && Math.floor(player.actionTimer + deltaTime) % 2 !== 0) {
                  const chopSound = AudioManager.getBuffer('./chop.mp3');
                  AudioManager.play(chopSound, player.pixelX, player.pixelY);
             }

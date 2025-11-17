@@ -80,29 +80,23 @@ export function beginChopping(player, gameMap, game) {
         return;
     }
 
-    const CHOP_DURATION_MS = 11000;
     const targetId = `${player.actionTarget.x},${player.actionTarget.y}`;
-    const now = Date.now();
-    let remainingTimeMs;
-    let totalTimeMs;
+    const CHOP_WORK = 11000; // ms
 
     if (!game.activeChoppingTargets.has(targetId)) {
         game.activeChoppingTargets.set(targetId, { 
-            startTime: now, 
-            totalTime: CHOP_DURATION_MS 
+            remainingWork: CHOP_WORK,
+            choppers: new Set()
         });
-        remainingTimeMs = CHOP_DURATION_MS;
-        totalTimeMs = CHOP_DURATION_MS;
-    } else {
-        const chopData = game.activeChoppingTargets.get(targetId);
-        remainingTimeMs = (chopData.startTime + chopData.totalTime) - now;
-        totalTimeMs = chopData.totalTime;
     }
 
+    const chopData = game.activeChoppingTargets.get(targetId);
+    chopData.choppers.add(player.id);
+    
     player.state = PLAYER_STATE.CHOPPING;
-    player.actionTimer = Math.max(0, remainingTimeMs / 1000); // in seconds
-    player.actionTotalTime = totalTimeMs / 1000;
-    console.log(`[${player.username}] Began chopping tree at (${player.actionTarget.x}, ${player.actionTarget.y}) with ${player.actionTimer.toFixed(1)}s remaining.`);
+    player.actionTimer = chopData.remainingWork / 1000; // in seconds
+    player.actionTotalTime = CHOP_WORK / 1000;
+    console.log(`[${player.username}] Began chopping tree at (${player.actionTarget.x}, ${player.actionTarget.y}) with ${player.actionTimer.toFixed(1)}s remaining. Total choppers: ${chopData.choppers.size}`);
 }
 
 function treeHasBeenChopped(player, gameMap, allPlayers) {
@@ -152,7 +146,10 @@ export function finishChopping(player, gameMap, game, allPlayers) {
 
     if (!player.actionTarget || gameMap.grid[player.actionTarget.y][player.actionTarget.x] !== TILE_TYPE.TREE) {
         console.log(`[${player.username}] Finished chopping, but the tree was already gone. Finding another.`);
-        startChoppingCycle(player, gameMap);
+        // Don't restart chopping if the command was to follow, let follow logic take over
+        if (player.activeCommand !== 'follow') {
+            startChoppingCycle(player, gameMap);
+        }
         return;
     }
 
