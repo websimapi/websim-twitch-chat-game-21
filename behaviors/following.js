@@ -61,7 +61,7 @@ export function updateFollow(player, gameMap, allPlayers, deltaTime) {
 
             for (let r = 1; r < 5; r++) {
                  for (let i = -r; i <= r; i++) {
-                    for (let j = -(r-Math.abs(i)); j <= (r-Math.abs(i)); j++) {
+                    for (let j = -r; j <= r; j++) {
                         if(i === 0 && j === 0) continue;
                         const spotX = targetX + i;
                         const spotY = targetY + j;
