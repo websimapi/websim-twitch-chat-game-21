@@ -2,7 +2,7 @@ import { PLAYER_STATE } from '../player-state.js';
 import { AudioManager } from '../audio-manager.js';
 import { updateWander, updateMoveToTarget, updateFollowPath } from '../player-movement.js';
 import { beginChopping, finishChopping, startChoppingCycle } from './chopping.js';
-import { beginHarvestingBushes, beginHarvestingLogs, finishHarvestingBushes, harvestNextBush, startGatheringCycle } from './gathering.js';
+import { beginHarvestingBushes, beginHarvestingLogs, finishHarvestingBushes, finishHarvestingLogs, harvestNextBush, startGatheringCycle } from './gathering.js';
 import { updateFollow } from './following.js';
 import { TILE_TYPE } from '../map-tile-types.js';
 import { findPath } from '../pathfinding.js';
